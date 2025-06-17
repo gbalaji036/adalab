@@ -3,108 +3,81 @@
 
 #define MAX 100
 
-// Structure to represent an edge
 struct Edge {
-    int src, dest, weight;
+    int u, v, w;
 };
 
-// Structure to represent a subset for Union-Find
 struct Subset {
-    int parent;
-    int rank;
+    int parent, rank;
 };
 
-// Function to create a subset
-void createSubset(struct Subset subsets[], int V) {
+int find(struct Subset subsets[], int i) {
+    if (subsets[i].parent != i)
+        subsets[i].parent = find(subsets, subsets[i].parent);
+    return subsets[i].parent;
+}
+
+void unionSets(struct Subset subsets[], int x, int y) {
+    int rootX = find(subsets, x);
+    int rootY = find(subsets, y);
+
+    if (subsets[rootX].rank < subsets[rootY].rank)
+        subsets[rootX].parent = rootY;
+    else if (subsets[rootX].rank > subsets[rootY].rank)
+        subsets[rootY].parent = rootX;
+    else {
+        subsets[rootY].parent = rootX;
+        subsets[rootX].rank++;
+    }
+}
+
+int compare(const void* a, const void* b) {
+    return ((struct Edge*)a)->w - ((struct Edge*)b)->w;
+}
+
+void kruskal(struct Edge edges[], int V, int E) {
+    struct Subset subsets[MAX];
+    struct Edge mst[MAX];
+    int cost = 0, count = 0;
+
     for (int i = 0; i < V; i++) {
         subsets[i].parent = i;
         subsets[i].rank = 0;
     }
-}
 
-// Function to find the subset of an element with path compression
-int find(struct Subset subsets[], int i) {
-    if (subsets[i].parent != i) {
-        subsets[i].parent = find(subsets, subsets[i].parent);
-    }
-    return subsets[i].parent;
-}
+    qsort(edges, E, sizeof(edges[0]), compare);
 
-// Function to do union of two subsets with union by rank
-void unionSets(struct Subset subsets[], int x, int y) {
-    int xroot = find(subsets, x);
-    int yroot = find(subsets, y);
+    for (int i = 0; i < E && count < V - 1; i++) {
+        int u = edges[i].u;
+        int v = edges[i].v;
 
-    // Union by rank
-    if (subsets[xroot].rank < subsets[yroot].rank) {
-        subsets[xroot].parent = yroot;
-    } else if (subsets[xroot].rank > subsets[yroot].rank) {
-        subsets[yroot].parent = xroot;
-    } else {
-        subsets[yroot].parent = xroot;
-        subsets[xroot].rank++;
-    }
-}
+        int setU = find(subsets, u);
+        int setV = find(subsets, v);
 
-// Function to compare two edges (used for sorting edges by weight)
-int compareEdges(const void* a, const void* b) {
-    return ((struct Edge*)a)->weight - ((struct Edge*)b)->weight;
-}
-
-// Kruskal's algorithm to find the MST
-void kruskalMST(struct Edge edges[], int V, int E) {
-    struct Subset subsets[V];
-
-    // Step 1: Sort edges in non-decreasing order of their weight
-    qsort(edges, E, sizeof(edges[0]), compareEdges);
-
-    // Create V subsets
-    createSubset(subsets, V);
-
-    struct Edge mst[V - 1];  // MST will have V-1 edges
-    int mstIndex = 0;
-    int mstCost = 0;
-
-    // Step 2: Process each edge
-    for (int i = 0; i < E && mstIndex < V - 1; i++) {
-        int x = find(subsets, edges[i].src);
-        int y = find(subsets, edges[i].dest);
-
-        // If including this edge does not cause a cycle
-        if (x != y) {
-            mst[mstIndex++] = edges[i];
-            mstCost += edges[i].weight;
-            unionSets(subsets, x, y);  // Union the sets
+        if (setU != setV) {
+            mst[count++] = edges[i];
+            cost += edges[i].w;
+            unionSets(subsets, setU, setV);
         }
     }
 
-    // Step 3: Print the MST
-    printf("Edges in the Minimum Spanning Tree (MST):\n");
-    for (int i = 0; i < mstIndex; i++) {
-        printf("%d - %d : %d\n", mst[i].src, mst[i].dest, mst[i].weight);
-    }
-    printf("Total weight of MST: %d\n", mstCost);
+    printf("Edges in MST:\n");
+    for (int i = 0; i < count; i++)
+        printf("%d - %d : %d\n", mst[i].u, mst[i].v, mst[i].w);
+    printf("Total weight: %d\n", cost);
 }
 
 int main() {
     int V, E;
+    struct Edge edges[MAX];
 
-    // Input number of vertices and edges
-    printf("Enter number of vertices: ");
-    scanf("%d", &V);
-    printf("Enter number of edges: ");
-    scanf("%d", &E);
+    printf("Enter number of vertices and edges: ");
+    scanf("%d %d", &V, &E);
 
-    struct Edge edges[E];
+    printf("Enter edges (u v weight):\n");
+    for (int i = 0; i < E; i++)
+        scanf("%d %d %d", &edges[i].u, &edges[i].v, &edges[i].w);
 
-    // Input edges (src, dest, weight)
-    printf("Enter the edges (src, dest, weight):\n");
-    for (int i = 0; i < E; i++) {
-        scanf("%d %d %d", &edges[i].src, &edges[i].dest, &edges[i].weight);
-    }
-
-    // Call Kruskal's algorithm to find MST
-    kruskalMST(edges, V, E);
-
+    kruskal(edges, V, E);
     return 0;
 }
